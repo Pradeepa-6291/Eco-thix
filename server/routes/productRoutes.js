@@ -9,6 +9,6 @@ router.get('/', getProducts);
 router.get('/:id', getProduct);
 router.post('/', protect, supplierOrAdmin, createProduct);
 router.put('/:id', protect, supplierOrAdmin, updateProduct);
-router.delete('/:id', protect, admin, deleteProduct);
+router.delete('/:id', protect, supplierOrAdmin, deleteProduct);
 
 module.exports = router;

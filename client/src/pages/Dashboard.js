@@ -22,6 +22,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
+  const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('impact');
@@ -37,6 +38,12 @@ export default function Dashboard() {
         const ordersRes = await api.get('/orders/my');
         if (cancelled) return;
         setOrders(ordersRes.data);
+
+        if (user.role === 'supplier' || user.role === 'admin') {
+          const productsRes = await api.get('/products');
+          if (cancelled) return;
+          setProducts(productsRes.data);
+        }
 
         if (user.role === 'admin') {
           const [allOrdersRes, usersRes] = await Promise.all([
@@ -81,6 +88,16 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await api.delete(`/products/${productId}`);
+      setProducts((prev) => prev.filter((p) => p._id !== productId));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete product');
+    }
+  };
+
   const handleStatusUpdate = async (orderId, status) => {
     try {
       await api.put(`/orders/${orderId}/status`, { status });
@@ -93,7 +110,8 @@ export default function Dashboard() {
   const TABS = [
     { id: 'impact', label: '🌍 Impact', roles: ['user', 'supplier', 'admin'] },
     { id: 'orders', label: '📦 My Orders', roles: ['user', 'supplier', 'admin'] },
-    { id: 'products', label: '🛍️ Add Product', roles: ['supplier', 'admin'] },
+    { id: 'myproducts', label: '📋 My Products', roles: ['supplier', 'admin'] },
+    { id: 'products', label: '➕ Add Product', roles: ['supplier', 'admin'] },
     { id: 'manage', label: '⚙️ Manage Orders', roles: ['admin'] },
     { id: 'users', label: '👥 Users', roles: ['admin'] },
   ].filter((t) => t.roles.includes(user.role));
@@ -172,6 +190,56 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── My Products Tab ── */}
+      {tab === 'myproducts' && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-700 mb-6">My Products ({products.length})</h2>
+          {products.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <div className="text-5xl mb-3">🛍️</div>
+              <p>No products yet. Add your first product!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products.map((p) => (
+                <div key={p._id} className="card p-4">
+                  <div className="relative mb-3">
+                    <img
+                      src={p.image || 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=400'}
+                      alt={p.name}
+                      className="w-full h-40 object-cover rounded-xl"
+                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=400'; }}
+                    />
+                    {p.badge && (
+                      <span className="absolute top-2 left-2 badge bg-primary text-white text-xs">{p.badge}</span>
+                    )}
+                    <span className="absolute top-2 right-2 bg-white/90 rounded-full px-2 py-0.5 text-xs font-bold text-green-700">🌱 {p.sustainabilityScore}%</span>
+                  </div>
+                  <p className="text-xs text-gray-400 uppercase mb-1">{p.category}</p>
+                  <h3 className="font-semibold text-gray-800 mb-1 line-clamp-1">{p.name}</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-primary">${p.price?.toFixed(2)}</span>
+                    {p.oldPrice && <span className="text-xs text-gray-400 line-through">${p.oldPrice?.toFixed(2)}</span>}
+                    <span className="ml-auto text-xs text-gray-400">📦 Stock: {p.stock}</span>
+                  </div>
+                  <div className="flex gap-2 text-xs text-gray-500 mb-3">
+                    {p.carbonSaved > 0 && <span>☁️ {p.carbonSaved}kg CO₂</span>}
+                    {p.treesPlanted > 0 && <span>🌳 {p.treesPlanted} trees</span>}
+                    {p.ecoCredits > 0 && <span>🌱 +{p.ecoCredits} credits</span>}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteProduct(p._id)}
+                    className="w-full py-2 rounded-full text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-200"
+                  >
+                    🗑️ Delete Product
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
