@@ -14,6 +14,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
+  'https://eco-thix.vercel.app',
   'https://ecothix-mern.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean);
@@ -25,6 +26,7 @@ app.use(cors({
   },
   credentials: true,
 }));
+
 app.use(express.json());
 
 app.get('/', (req, res) => res.json({ message: '🌿 Ecothix API Running' }));
@@ -34,17 +36,15 @@ app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/orders', orderRoutes);
 
-// 404 handler
 app.use(function notFound(req, res) {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Global error handler — Express requires exactly 4 params to treat as error middleware
 app.use(function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
   console.error(err.stack);
   const status = err.status || err.statusCode || 500;
   res.status(status).json({ message: err.message || 'Server Error' });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
