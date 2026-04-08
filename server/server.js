@@ -8,43 +8,50 @@ const productRoutes = require('./routes/productRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 
+// Connect DB
 connectDB();
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://eco-thix.vercel.app',
-  'https://ecothix-mern.vercel.app',
-  process.env.CLIENT_URL,
-].filter(Boolean);
-
+// ✅ CORS (FIXED - allow all for now)
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
+  origin: "*",
 }));
 
+// ✅ Handle preflight requests
+app.options('*', cors());
+
+// Middleware
 app.use(express.json());
 
-app.get('/', (req, res) => res.json({ message: '🌿 Ecothix API Running' }));
+// Test route
+app.get('/', (req, res) => {
+  res.json({ message: '🌿 Ecothix API Running' });
+});
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/orders', orderRoutes);
 
-app.use(function notFound(req, res) {
+// 404 handler
+app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-app.use(function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+// Error handler
+app.use((err, req, res, next) => {
   console.error(err.stack);
-  const status = err.status || err.statusCode || 500;
-  res.status(status).json({ message: err.message || 'Server Error' });
+
+  res.status(err.status || 500).json({
+    message: err.message || 'Server Error',
+  });
 });
 
+// PORT
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
