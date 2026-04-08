@@ -40,9 +40,13 @@ export default function Dashboard() {
         setOrders(ordersRes.data);
 
         if (user.role === 'supplier' || user.role === 'admin') {
-          const productsRes = await api.get('/products');
+          const [productsRes, allOrdersRes] = await Promise.all([
+            api.get('/products'),
+            api.get('/orders/all'),
+          ]);
           if (cancelled) return;
           setProducts(productsRes.data);
+          setAllOrders(allOrdersRes.data);
         }
 
         if (user.role === 'admin') {
@@ -103,7 +107,7 @@ export default function Dashboard() {
       await api.put(`/orders/${orderId}/status`, { status });
       setAllOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status } : o));
     } catch (err) {
-      console.error(err);
+      alert(err.response?.data?.message || 'Failed to update status');
     }
   };
 
@@ -112,7 +116,8 @@ export default function Dashboard() {
     { id: 'orders', label: '📦 My Orders', roles: ['user', 'supplier', 'admin'] },
     { id: 'myproducts', label: '📋 My Products', roles: ['supplier', 'admin'] },
     { id: 'products', label: '➕ Add Product', roles: ['supplier', 'admin'] },
-    { id: 'manage', label: '⚙️ Manage Orders', roles: ['admin'] },
+    { id: 'allorders', label: '🚚 Manage Orders', roles: ['supplier', 'admin'] },
+    { id: 'manage', label: '⚙️ Order Status', roles: ['admin'] },
     { id: 'users', label: '👥 Users', roles: ['admin'] },
   ].filter((t) => t.roles.includes(user.role));
 
@@ -365,7 +370,88 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Admin: Manage Orders ── */}
+      {/* ── Supplier+Admin: Manage Orders ── */}
+      {tab === 'allorders' && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-700 mb-6">📦 All Orders ({allOrders.length})</h2>
+          {allOrders.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <div className="text-5xl mb-3">📋</div>
+              <p>No orders yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {allOrders.map((order) => (
+                <div key={order._id} className="card p-5">
+                  <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
+                    <div>
+                      <p className="font-bold text-gray-700">Order #{order._id.slice(-8).toUpperCase()}</p>
+                      <p className="text-sm text-gray-500">{order.userId?.name} · {order.userId?.email}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{new Date(order.createdAt).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`badge ${STATUS_COLORS[order.status]}`}>{order.status}</span>
+                      <span className={`badge ${order.paymentMethod === 'cod' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                        {order.paymentMethod === 'cod' ? '💵 COD' : '💳 Paid'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Products */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {order.products.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full text-sm">
+                        {p.image && <img src={p.image} alt={p.name} className="w-5 h-5 rounded-full object-cover" />}
+                        <span>{p.name} ×{p.quantity}</span>
+                        <span className="text-primary font-semibold">${(p.price * p.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Shipping Address */}
+                  <p className="text-xs text-gray-400 mb-3">📍 {order.shippingAddress}</p>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="font-bold text-primary text-lg">${order.totalAmount?.toFixed(2)}</span>
+
+                    {/* Status Action Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      {order.status === 'pending' && (
+                        <button onClick={() => handleStatusUpdate(order._id, 'processing')} className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-200 transition-colors">
+                          ⚙️ Mark Processing
+                        </button>
+                      )}
+                      {order.status === 'processing' && (
+                        <button onClick={() => handleStatusUpdate(order._id, 'shipped')} className="px-4 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold hover:bg-purple-200 transition-colors">
+                          🚚 Mark Shipped
+                        </button>
+                      )}
+                      {order.status === 'shipped' && (
+                        <button onClick={() => handleStatusUpdate(order._id, 'delivered')} className="px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200 transition-colors">
+                          ✅ Mark Delivered
+                        </button>
+                      )}
+                      {!['delivered', 'cancelled'].includes(order.status) && (
+                        <button onClick={() => handleStatusUpdate(order._id, 'cancelled')} className="px-4 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold hover:bg-red-200 transition-colors">
+                          ✕ Cancel
+                        </button>
+                      )}
+                      {order.status === 'delivered' && (
+                        <span className="px-4 py-1.5 bg-green-50 text-green-600 rounded-full text-xs font-semibold">✅ Delivered</span>
+                      )}
+                      {order.status === 'cancelled' && (
+                        <span className="px-4 py-1.5 bg-red-50 text-red-400 rounded-full text-xs font-semibold">✕ Cancelled</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Admin: Manage Orders (dropdown) ── */}
       {tab === 'manage' && user.role === 'admin' && (
         <div>
           <h2 className="text-xl font-bold text-gray-700 mb-6">All Orders ({allOrders.length})</h2>

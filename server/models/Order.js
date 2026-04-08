@@ -22,6 +22,8 @@ const orderSchema = new mongoose.Schema(
       default: 'pending',
     },
     shippingAddress: { type: String },
+    paymentMethod: { type: String, enum: ['card', 'cod'], default: 'card' },
+    paymentStatus: { type: String, enum: ['paid', 'pending'], default: 'paid' },
   },
   { timestamps: true }
 );

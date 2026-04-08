@@ -3,7 +3,7 @@ const User = require('../models/User');
 
 // @POST /api/orders
 const placeOrder = async (req, res) => {
-  const { products, totalAmount, shippingAddress } = req.body;
+  const { products, totalAmount, shippingAddress, paymentMethod } = req.body;
   if (!products?.length) return res.status(400).json({ message: 'No products in order' });
 
   const carbonSaved = +(totalAmount * 0.5).toFixed(2);
@@ -18,6 +18,8 @@ const placeOrder = async (req, res) => {
     ecoCreditsEarned,
     treesPlanted,
     shippingAddress,
+    paymentMethod: paymentMethod || 'card',
+    paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
   });
 
   await User.findByIdAndUpdate(req.user._id, {
