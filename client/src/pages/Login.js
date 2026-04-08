@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -129,7 +129,10 @@ export default function Login() {
 
             <p className="text-center text-sm text-gray-500 mt-6">
               {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-              <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="text-primary font-semibold hover:underline">
+              <button
+                onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                className="text-primary font-semibold hover:underline"
+              >
                 {isLogin ? 'Sign Up' : 'Login'}
               </button>
             </p>
