@@ -8,36 +8,17 @@ const productRoutes = require('./routes/productRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 
+// Connect DB
 connectDB();
 
 const app = express();
 
-// ✅ CORS CONFIG (FIXED)
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://eco-thix.vercel.app',
-  'https://ecothix-mern.vercel.app',
-];
-
+// ✅ CORS (FIXED - allow all for now)
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests without origin (Postman, mobile apps)
-    if (!origin) return callback(null, true);
-
-    // allow Vercel + localhost
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app')
-    ) {
-      return callback(null, true);
-    }
-
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
+  origin: "*",
 }));
 
-// ✅ HANDLE PREFLIGHT REQUESTS (IMPORTANT)
+// ✅ Handle preflight requests
 app.options('*', cors());
 
 // Middleware
@@ -62,10 +43,6 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ message: err.message });
-  }
 
   res.status(err.status || 500).json({
     message: err.message || 'Server Error',
