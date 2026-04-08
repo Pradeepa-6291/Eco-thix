@@ -11,6 +11,13 @@ const STATUS_COLORS = {
   cancelled: 'bg-red-100 text-red-700',
 };
 
+const EMPTY_PRODUCT = {
+  name: '', description: '', price: '', category: 'fashion',
+  sustainabilityScore: 80, stock: 10, fairTradeBadges: '',
+  image: '', oldPrice: '', badge: '',
+  carbonSaved: '', treesPlanted: '', ecoCredits: '',
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -18,33 +25,24 @@ export default function Dashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('impact');
-  const [newProduct, setNewProduct] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category: 'fashion',
-    sustainabilityScore: 80,
-    stock: 10,
-    fairTradeBadges: '',
-    image: '',
-    oldPrice: '',
-    badge: '',
-    carbonSaved: '',
-    treesPlanted: '',
-    ecoCredits: '',
-  });
+  const [newProduct, setNewProduct] = useState(EMPTY_PRODUCT);
   const [productMsg, setProductMsg] = useState('');
+
+  const set = (field) => (e) => setNewProduct((p) => ({ ...p, [field]: e.target.value }));
 
   useEffect(() => {
     let cancelled = false;
     const fetchData = async () => {
       try {
-        const [ordersRes] = await Promise.all([api.get('/orders/my')]);
+        const ordersRes = await api.get('/orders/my');
         if (cancelled) return;
         setOrders(ordersRes.data);
 
         if (user.role === 'admin') {
-          const [allOrdersRes, usersRes] = await Promise.all([api.get('/orders'), api.get('/auth/users')]);
+          const [allOrdersRes, usersRes] = await Promise.all([
+            api.get('/orders'),
+            api.get('/auth/users'),
+          ]);
           if (cancelled) return;
           setAllOrders(allOrdersRes.data);
           setUsers(usersRes.data);
@@ -61,12 +59,15 @@ export default function Dashboard() {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    setProductMsg('');
     try {
       const badges = newProduct.fairTradeBadges.split(',').map((b) => b.trim()).filter(Boolean);
       await api.post('/products', {
         ...newProduct,
         price: Number(newProduct.price),
         oldPrice: newProduct.oldPrice ? Number(newProduct.oldPrice) : undefined,
+        sustainabilityScore: Number(newProduct.sustainabilityScore),
+        stock: Number(newProduct.stock),
         fairTradeBadges: badges,
         image: newProduct.image.trim(),
         carbonSaved: newProduct.carbonSaved ? Number(newProduct.carbonSaved) : 0,
@@ -74,21 +75,7 @@ export default function Dashboard() {
         ecoCredits: newProduct.ecoCredits ? Number(newProduct.ecoCredits) : 0,
       });
       setProductMsg('✅ Product added successfully!');
-      setNewProduct({
-        name: '',
-        description: '',
-        price: '',
-        category: 'fashion',
-        sustainabilityScore: 80,
-        stock: 10,
-        fairTradeBadges: '',
-        image: '',
-        oldPrice: '',
-        badge: '',
-        carbonSaved: '',
-        treesPlanted: '',
-        ecoCredits: '',
-      });
+      setNewProduct(EMPTY_PRODUCT);
     } catch (err) {
       setProductMsg('❌ ' + (err.response?.data?.message || 'Failed to add product'));
     }
@@ -122,6 +109,7 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
+
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -129,7 +117,9 @@ export default function Dashboard() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Welcome, {user.name}! 👋</h1>
-          <p className="text-gray-500 capitalize">{user.role} Dashboard · <span className="text-primary font-semibold">🌱 {user.ecoCredits} eco-credits</span></p>
+          <p className="text-gray-500 capitalize">
+            {user.role} Dashboard · <span className="text-primary font-semibold">🌱 {user.ecoCredits} eco-credits</span>
+          </p>
         </div>
       </div>
 
@@ -146,10 +136,10 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Impact Tab */}
+      {/* ── Impact Tab ── */}
       {tab === 'impact' && <ImpactTracker orders={orders} user={user} />}
 
-      {/* My Orders Tab */}
+      {/* ── My Orders Tab ── */}
       {tab === 'orders' && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-gray-700">My Orders ({orders.length})</h2>
@@ -185,46 +175,162 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Add Product Tab */}
+      {/* ── Add Product Tab ── */}
       {tab === 'products' && (
         <div className="max-w-2xl">
           <h2 className="text-xl font-bold text-gray-700 mb-6">Add New Product</h2>
-          {productMsg && <div className="mb-4 p-3 bg-eco-bg rounded-xl text-sm font-medium">{productMsg}</div>}
+
+          {productMsg && (
+            <div className={`mb-4 p-3 rounded-xl text-sm font-medium ${productMsg.startsWith('✅') ? 'bg-eco-bg text-green-700' : 'bg-red-50 text-red-600'}`}>
+              {productMsg}
+            </div>
+          )}
+
           <form onSubmit={handleAddProduct} className="card p-6 space-y-4">
-            {/* Form fields... (kept same as original code) */}
-            {/* ... */}
-            <button type="submit" className="btn-primary w-full py-3">🌱 Add Product</button>
+
+            {/* Name + Category */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Product Name *</label>
+                <input className="input" placeholder="Bamboo T-Shirt" value={newProduct.name} onChange={set('name')} required />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Category *</label>
+                <select className="input" value={newProduct.category} onChange={set('category')}>
+                  {['fashion', 'home', 'tech', 'beauty', 'food', 'other'].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Description *</label>
+              <textarea className="input resize-none" rows={3} placeholder="Product description..." value={newProduct.description} onChange={set('description')} required />
+            </div>
+
+            {/* Price + Eco Score + Stock */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Price ($) *</label>
+                <input type="number" min="0" step="0.01" className="input" placeholder="49.99" value={newProduct.price} onChange={set('price')} required />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Eco Score (0-100)</label>
+                <input type="number" min="0" max="100" className="input" value={newProduct.sustainabilityScore} onChange={set('sustainabilityScore')} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Stock</label>
+                <input type="number" min="0" className="input" value={newProduct.stock} onChange={set('stock')} />
+              </div>
+            </div>
+
+            {/* Old Price + Badge */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Old Price ($) <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input type="number" min="0" step="0.01" className="input" placeholder="59.99" value={newProduct.oldPrice} onChange={set('oldPrice')} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Badge <span className="text-gray-400 font-normal">(optional)</span></label>
+                <select className="input" value={newProduct.badge} onChange={set('badge')}>
+                  <option value="">None</option>
+                  {['Best Seller', 'Eco Choice', 'New', 'Sale'].map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Fair Trade Badges */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Fair Trade Badges <span className="text-gray-400 font-normal">(comma-separated)</span></label>
+              <input className="input" placeholder="Fair Trade, B-Corp, Organic" value={newProduct.fairTradeBadges} onChange={set('fairTradeBadges')} />
+            </div>
+
+            {/* Eco Impact Fields */}
+            <div className="bg-eco-bg rounded-2xl p-4 space-y-3">
+              <p className="text-sm font-bold text-eco-dark">🌍 Eco Impact per Purchase</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">☁️ CO₂ Saved (kg)</label>
+                  <input type="number" min="0" step="0.1" className="input text-sm" placeholder="e.g. 12.5" value={newProduct.carbonSaved} onChange={set('carbonSaved')} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">🌳 Trees Planted</label>
+                  <input type="number" min="0" className="input text-sm" placeholder="e.g. 2" value={newProduct.treesPlanted} onChange={set('treesPlanted')} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">🌱 Eco Credits</label>
+                  <input type="number" min="0" className="input text-sm" placeholder="e.g. 50" value={newProduct.ecoCredits} onChange={set('ecoCredits')} />
+                </div>
+              </div>
+              {(newProduct.carbonSaved || newProduct.treesPlanted || newProduct.ecoCredits) && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-green-200">
+                  {newProduct.carbonSaved && <span className="badge bg-blue-100 text-blue-700">☁️ {newProduct.carbonSaved} kg CO₂</span>}
+                  {newProduct.treesPlanted && <span className="badge bg-green-100 text-green-700">🌳 {newProduct.treesPlanted} trees</span>}
+                  {newProduct.ecoCredits && <span className="badge bg-emerald-100 text-emerald-700">🌱 +{newProduct.ecoCredits} credits</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Image URL */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Product Image URL <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input className="input" placeholder="https://images.unsplash.com/photo-xxx?w=400" value={newProduct.image} onChange={set('image')} />
+              {newProduct.image.trim() && (
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={newProduct.image.trim()}
+                    alt="Preview"
+                    className="h-24 w-24 object-cover rounded-xl border-2 border-primary"
+                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=400'; }}
+                  />
+                  <p className="text-xs text-green-600 font-medium">✅ Image preview</p>
+                </div>
+              )}
+            </div>
+
+            <button type="submit" className="btn-primary w-full py-3 text-base">🌱 Add Product</button>
           </form>
         </div>
       )}
 
-      {/* Admin: Manage Orders */}
+      {/* ── Admin: Manage Orders ── */}
       {tab === 'manage' && user.role === 'admin' && (
         <div>
           <h2 className="text-xl font-bold text-gray-700 mb-6">All Orders ({allOrders.length})</h2>
-          <div className="space-y-3">
-            {allOrders.map((order) => (
-              <div key={order._id} className="card p-4 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-gray-700">#{order._id.slice(-8).toUpperCase()}</p>
-                  <p className="text-sm text-gray-400">{order.userId?.name} · ${order.totalAmount?.toFixed(2)}</p>
+          {allOrders.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <div className="text-5xl mb-3">📋</div>
+              <p>No orders yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allOrders.map((order) => (
+                <div key={order._id} className="card p-4 flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-gray-700">#{order._id.slice(-8).toUpperCase()}</p>
+                    <p className="text-sm text-gray-400">{order.userId?.name} · ${order.totalAmount?.toFixed(2)}</p>
+                  </div>
+                  <select
+                    value={order.status}
+                    onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
+                    className="input w-auto text-sm py-2"
+                  >
+                    {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={order.status}
-                  onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                  className="input w-auto text-sm py-2"
-                >
-                  {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Admin: Users */}
+      {/* ── Admin: Users ── */}
       {tab === 'users' && user.role === 'admin' && (
         <div>
           <h2 className="text-xl font-bold text-gray-700 mb-6">All Users ({users.length})</h2>
@@ -243,7 +349,9 @@ export default function Dashboard() {
                     <td className="px-4 py-3 font-medium">{u.name}</td>
                     <td className="px-4 py-3 text-gray-500">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span className={`badge ${u.role === 'admin' ? 'bg-red-100 text-red-700' : u.role === 'supplier' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{u.role}</span>
+                      <span className={`badge ${u.role === 'admin' ? 'bg-red-100 text-red-700' : u.role === 'supplier' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                        {u.role}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-primary font-semibold">{u.ecoCredits}</td>
                     <td className="px-4 py-3">🌳 {u.treesPlanted}</td>
@@ -255,6 +363,7 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
